@@ -16,7 +16,8 @@ import {
   TrendingDown,
   Layers,
   Search,
-  Cpu
+  Cpu,
+  ExternalLink
 } from 'lucide-react';
 import { AIStudioProject, RequestTrace } from '../types/aiStudio';
 import { formatCurrency, formatCompactNumber } from '../utils/pricingCalculator';
@@ -101,8 +102,24 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
               <span aria-hidden="true">·</span>
               <span>Region: {project.region}</span>
               <span aria-hidden="true">·</span>
-              <span>Created {project.createdDate}</span>
+              <span>Last Used: <strong className="text-neutral-700">{project.lastUsedStatus || 'Active'}</strong></span>
+              <span aria-hidden="true">·</span>
+              <span>Deployment: <strong className="text-neutral-700">{project.lastDeployedStatus || 'Deployed'}</strong></span>
             </div>
+
+            {project.liveUrl && (
+              <div className="mt-2 flex items-center gap-2">
+                <a
+                  href={project.liveUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white border border-neutral-300 rounded text-blue-600 hover:text-blue-800 text-xs font-mono font-medium hover:bg-neutral-50"
+                >
+                  <span>{project.liveUrl}</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              </div>
+            )}
           </div>
 
           <button

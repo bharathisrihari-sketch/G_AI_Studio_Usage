@@ -1,4 +1,4 @@
-import { AIStudioProject, ToolBurnMetric, RequestTrace, FinOpsSummary } from '../types/aiStudio';
+import { AIStudioProject, ToolBurnMetric, RequestTrace, FinOpsSummary, AnomalyEvent } from '../types/aiStudio';
 
 export const USER_EMAIL = 'bharathi.srihari@gmail.com';
 export const BILLING_ACCOUNT_ID = '018F42-99B72C-AA4190';
@@ -52,6 +52,13 @@ export const INITIAL_PROJECTS: AIStudioProject[] = [
     id: 'proj-640868056160',
     name: 'Google AI Studio Active Workspace',
     gcpProjectId: 'ais-asia-southeast1-c2963b3f6b',
+    liveUrl: 'https://ais-dev-akpfsoxwk7zcbgjogf3u47-640868056160.asia-southeast1.run.app',
+    lastUsedStatus: 'Active (Just now)',
+    lastUsedTimestamp: '2026-10-07 19:40:15',
+    lastDeployedStatus: 'Deployed (Build #194 · Today 12:15 PM · Healthy)',
+    lastDeployedTimestamp: '2026-10-07 12:15:00',
+    deploymentVersion: 'v2.8.4 (rev-c2963b)',
+    deploymentHealth: 'healthy',
     environment: 'production',
     status: 'healthy',
     createdDate: '2026-08-15',
@@ -116,6 +123,13 @@ export const INITIAL_PROJECTS: AIStudioProject[] = [
     id: 'proj-bharathi-primary',
     name: 'Bharathi Primary AI Studio Engine',
     gcpProjectId: 'genai-bharathi-prod-01',
+    liveUrl: 'https://genai-bharathi-prod.asia-southeast1.run.app',
+    lastUsedStatus: 'Active (3m ago)',
+    lastUsedTimestamp: '2026-10-07 19:38:22',
+    lastDeployedStatus: 'Deployed (Build #168 · Today 09:30 AM · Healthy)',
+    lastDeployedTimestamp: '2026-10-07 09:30:00',
+    deploymentVersion: 'v3.2.0 (rev-812903)',
+    deploymentHealth: 'healthy',
     environment: 'production',
     status: 'healthy',
     createdDate: '2026-05-10',
@@ -180,6 +194,13 @@ export const INITIAL_PROJECTS: AIStudioProject[] = [
     id: 'proj-srihari-vision',
     name: 'Srihari Multimodal Vision & Catalog Inspector',
     gcpProjectId: 'srihari-vision-prod-98',
+    liveUrl: 'https://srihari-vision.asia-southeast1.run.app',
+    lastUsedStatus: 'Active (Just now)',
+    lastUsedTimestamp: '2026-10-07 19:41:00',
+    lastDeployedStatus: 'Deployed (Build #141 · Yesterday 06:15 PM · Warning)',
+    lastDeployedTimestamp: '2026-10-06 18:15:00',
+    deploymentVersion: 'v1.9.1 (rev-592810)',
+    deploymentHealth: 'warning',
     environment: 'production',
     status: 'warning',
     createdDate: '2026-06-22',
@@ -234,6 +255,13 @@ export const INITIAL_PROJECTS: AIStudioProject[] = [
     id: 'proj-bharathi-copilot',
     name: 'Bharathi Reasoning & Code Copilot',
     gcpProjectId: 'bharathi-copilot-2026',
+    liveUrl: 'https://copilot.bharathi.internal',
+    lastUsedStatus: 'Idle (18m ago)',
+    lastUsedTimestamp: '2026-10-07 19:23:10',
+    lastDeployedStatus: 'Deployed (Build #92 · Oct 05 04:10 PM · Healthy)',
+    lastDeployedTimestamp: '2026-10-05 16:10:00',
+    deploymentVersion: 'v2.1.0 (rev-448102)',
+    deploymentHealth: 'healthy',
     environment: 'research',
     status: 'healthy',
     createdDate: '2026-07-04',
@@ -298,6 +326,13 @@ export const INITIAL_PROJECTS: AIStudioProject[] = [
     id: 'proj-srihari-support',
     name: 'Srihari Live Concierge & Voice Assistant',
     gcpProjectId: 'srihari-voice-support-01',
+    liveUrl: 'https://voice.srihari.asia-southeast1.run.app',
+    lastUsedStatus: 'Active (1m ago)',
+    lastUsedTimestamp: '2026-10-07 19:40:48',
+    lastDeployedStatus: 'Deployed (Build #205 · Today 01:10 PM · Healthy)',
+    lastDeployedTimestamp: '2026-10-07 13:10:00',
+    deploymentVersion: 'v4.0.2 (rev-731902)',
+    deploymentHealth: 'healthy',
     environment: 'production',
     status: 'healthy',
     createdDate: '2026-08-01',
@@ -347,6 +382,54 @@ export const INITIAL_PROJECTS: AIStudioProject[] = [
         rateLimitRpm: 500
       }
     ]
+  }
+];
+
+export const INITIAL_ANOMALIES: AnomalyEvent[] = [
+  {
+    id: 'anom-01',
+    projectId: 'proj-srihari-vision',
+    projectName: 'Srihari Multimodal Vision & Catalog Inspector',
+    type: 'spend_spike',
+    severity: 'critical',
+    detectedAt: '12 mins ago',
+    headline: 'Uncharacteristic Video Ingest Spend Velocity Spike (+274%)',
+    description: 'Video frame streaming burn rate jumped to $14.20/hour compared to the 7-day baseline of $3.80/hour. Uncompressed 1 FPS video frames ingested without motion-triggered subsampling.',
+    metricCurrent: '$14.20 / hour',
+    metricBaseline: '$3.80 / hour (7-day baseline)',
+    deviationPercent: 274,
+    suggestedAction: 'Enable keyframe delta detection and subsample video to 0.2 FPS before streaming to Gemini 2.5 Flash.',
+    isResolved: false
+  },
+  {
+    id: 'anom-02',
+    projectId: 'proj-srihari-support',
+    projectName: 'Srihari Live Concierge & Voice Assistant',
+    type: 'error_rate_surge',
+    severity: 'high',
+    detectedAt: '42 mins ago',
+    headline: 'HTTP 429 RESOURCE_EXHAUSTED Rate Surge (8.6%)',
+    description: 'Sudden spike in rate-limiting errors on bidirectional audio streaming endpoints. Peak TPM reached 980k against sudden batching.',
+    metricCurrent: '8.6% error rate',
+    metricBaseline: '0.4% baseline',
+    deviationPercent: 2050,
+    suggestedAction: 'Activate client-side voice silence detection (VAD) to halt WebSocket frames during user silence.',
+    isResolved: false
+  },
+  {
+    id: 'anom-03',
+    projectId: 'proj-bharathi-primary',
+    projectName: 'Bharathi Primary AI Studio Engine',
+    type: 'tool_runaway',
+    severity: 'moderate',
+    detectedAt: '2 hours ago',
+    headline: 'Grounding Query Loop Detected on Product Catalog',
+    description: 'Google Search Grounding was executed on 92% of incoming turns due to missing dynamic confidence gating, burning $0.035 per turn.',
+    metricCurrent: '184 queries / hr',
+    metricBaseline: '42 queries / hr nominal',
+    deviationPercent: 338,
+    suggestedAction: 'Enable Dynamic Grounding Threshold (minimum confidence score 0.75).',
+    isResolved: false
   }
 ];
 

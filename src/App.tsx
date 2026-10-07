@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Header } from './components/Header';
+import { Header, TabType } from './components/Header';
 import { BudgetAlertsBanner } from './components/BudgetAlertsBanner';
 import { FinOpsSummaryCards } from './components/FinOpsSummaryCards';
 import { ProjectsTable } from './components/ProjectsTable';
@@ -13,22 +13,26 @@ import { EndToEndTracer } from './components/EndToEndTracer';
 import { AuditLogsView } from './components/AuditLogsView';
 import { ProjectDetailModal } from './components/ProjectDetailModal';
 import { AddProjectModal } from './components/AddProjectModal';
+import { TrendsDashboard } from './components/TrendsDashboard';
+import { AnomalyDetectionPanel } from './components/AnomalyDetectionPanel';
 import { 
   INITIAL_PROJECTS, 
   TOOL_BURN_METRICS, 
   RECENT_REQUEST_TRACES, 
+  INITIAL_ANOMALIES,
   USER_EMAIL, 
   BILLING_ACCOUNT_ID, 
   CURRENT_BILLING_CYCLE,
   computeFinOpsSummary 
 } from './data/mockData';
-import { AIStudioProject, RequestTrace } from './types/aiStudio';
-import { RefreshCw, CheckCircle2, Sparkles } from 'lucide-react';
+import { AIStudioProject, RequestTrace, AnomalyEvent } from './types/aiStudio';
+import { detectAnomaliesFromTraces } from './utils/anomalyDetector';
+import { RefreshCw, CheckCircle2, Sparkles, Activity, TrendingUp } from 'lucide-react';
 
-const STORAGE_KEY = 'aistudio_finops_projects_v2';
+const STORAGE_KEY = 'aistudio_finops_projects_v3';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'overview' | 'tool-burn' | 'end-to-end' | 'audit-logs'>('overview');
+  const [activeTab, setActiveTab] = useState<TabType>('overview');
   
   // Initialize projects from localStorage or default actual login projects
   const [projects, setProjects] = useState<AIStudioProject[]>(() => {
@@ -46,6 +50,7 @@ export default function App() {
 
   const [toolMetrics, setToolMetrics] = useState(TOOL_BURN_METRICS);
   const [requestTraces, setRequestTraces] = useState<RequestTrace[]>(RECENT_REQUEST_TRACES);
+  const [anomalies, setAnomalies] = useState<AnomalyEvent[]>(INITIAL_ANOMALIES);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [isAddProjectOpen, setIsAddProjectOpen] = useState(false);
   const [isSimulating, setIsSimulating] = useState(true);
@@ -64,8 +69,9 @@ export default function App() {
   // Compute live FinOps summary
   const finOpsSummary = computeFinOpsSummary(projects);
   const selectedProject = projects.find(p => p.id === selectedProjectId) || null;
+  const activeAnomaliesCount = anomalies.filter(a => !a.isResolved).length;
 
-  // Live traffic simulation effect
+  // Live traffic simulation and anomaly detection effect
   useEffect(() => {
     if (!isSimulating) return;
 
@@ -117,9 +123,23 @@ export default function App() {
       };
 
       // Prepend trace
-      setRequestTraces(prev => [newTrace, ...prev.slice(0, 49)]);
+      setRequestTraces(prev => {
+        const updated = [newTrace, ...prev.slice(0, 49)];
+        
+        // Run anomaly detection on updated traces
+        const detected = detectAnomaliesFromTraces(updated, projects);
+        if (detected.length > 0) {
+          setAnomalies(prevAnoms => {
+            const existingIds = new Set(prevAnoms.map(a => a.projectId + a.type));
+            const newOnes = detected.filter(d => !existingIds.has(d.projectId + d.type));
+            return [...newOnes, ...prevAnoms];
+          });
+        }
 
-      // Update project metrics
+        return updated;
+      });
+
+      // Update project metrics & last used status
       if (!isThrottledCandidate) {
         setProjects(prevProjects =>
           prevProjects.map(p => {
@@ -145,7 +165,9 @@ export default function App() {
               promptTokens: updatedPromptTok,
               outputTokens: updatedOutputTok,
               cachedTokens: updatedCachedTok,
-              status: updatedStatus
+              status: updatedStatus,
+              lastUsedStatus: 'Active (Just now)',
+              lastUsedTimestamp: new Date().toISOString().replace('T', ' ').substring(0, 19)
             };
           })
         );
@@ -158,20 +180,19 @@ export default function App() {
   // Project management handlers
   const handleAddProject = (newProject: AIStudioProject) => {
     setProjects(prev => {
-      // Check if project already exists
       const exists = prev.some(p => p.id === newProject.id || p.gcpProjectId === newProject.gcpProjectId);
       if (exists) {
         return prev.map(p => (p.id === newProject.id || p.gcpProjectId === newProject.gcpProjectId) ? newProject : p);
       }
       return [newProject, ...prev];
     });
-    setSyncStatusMsg(`Added "${newProject.name}" from your Google AI Studio account.`);
+    setSyncStatusMsg(`Added "${newProject.name}" to console.`);
     setTimeout(() => setSyncStatusMsg(null), 3500);
   };
 
   const handleImportMultipleProjects = (importedProjects: AIStudioProject[]) => {
     setProjects(importedProjects);
-    setSyncStatusMsg(`Successfully synchronized ${importedProjects.length} actual projects from your login.`);
+    setSyncStatusMsg(`Synchronized ${importedProjects.length} actual projects from your login.`);
     setTimeout(() => setSyncStatusMsg(null), 4000);
   };
 
@@ -189,8 +210,11 @@ export default function App() {
     } catch (e) {
       console.error(e);
     }
-    // Fallback to default actual projects
     handleImportMultipleProjects(INITIAL_PROJECTS);
+  };
+
+  const handleResolveAnomaly = (anomalyId: string) => {
+    setAnomalies(prev => prev.map(a => a.id === anomalyId ? { ...a, isResolved: true } : a));
   };
 
   const handleUpdateProjectBudget = (
@@ -230,6 +254,9 @@ export default function App() {
   const handleExportCSV = () => {
     const headers = [
       'Project Name',
+      'Live URL',
+      'Last Used Status',
+      'Last Deployed Status',
       'GCP Project ID',
       'Environment',
       'Status',
@@ -254,6 +281,9 @@ export default function App() {
 
     const rows = projects.map(p => [
       `"${p.name}"`,
+      `"${p.liveUrl}"`,
+      `"${p.lastUsedStatus}"`,
+      `"${p.lastDeployedStatus}"`,
       p.gcpProjectId,
       p.environment,
       p.status,
@@ -299,6 +329,7 @@ export default function App() {
         setIsSimulating={setIsSimulating}
         onOpenAddProject={() => setIsAddProjectOpen(true)}
         onExportReport={handleExportCSV}
+        activeAnomaliesCount={activeAnomaliesCount}
       />
 
       {/* Main Content Viewport */}
@@ -326,20 +357,40 @@ export default function App() {
             ) : null}
 
             <button
+              onClick={() => setActiveTab('anomalies')}
+              className={`px-2.5 py-1 text-xs font-medium rounded transition-colors flex items-center gap-1.5 ${
+                activeAnomaliesCount > 0 
+                  ? 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100'
+                  : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
+              }`}
+            >
+              <Activity className="w-3.5 h-3.5 text-rose-600" />
+              <span>{activeAnomaliesCount} Anomalies</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('trends')}
+              className="px-2.5 py-1 text-xs font-medium text-neutral-700 bg-neutral-100 hover:bg-neutral-200 rounded transition-colors flex items-center gap-1"
+            >
+              <TrendingUp className="w-3.5 h-3.5 text-blue-600" />
+              <span>30D Trends</span>
+            </button>
+
+            <button
               onClick={handleSyncFromLogin}
               className="px-2.5 py-1 text-xs font-medium text-neutral-700 bg-neutral-100 hover:bg-neutral-200 rounded transition-colors flex items-center gap-1"
               title="Resynchronize projects directly from Google AI Studio session"
             >
               <RefreshCw className="w-3 h-3 text-neutral-500" />
-              <span>Sync From Login</span>
+              <span>Sync Login</span>
             </button>
 
             <button
               onClick={() => setIsAddProjectOpen(true)}
-              className="px-2.5 py-1 text-xs font-medium text-neutral-900 bg-neutral-100 hover:bg-neutral-200 rounded transition-colors flex items-center gap-1"
+              className="px-2.5 py-1 text-xs font-medium text-white bg-neutral-900 hover:bg-neutral-800 rounded transition-colors flex items-center gap-1"
             >
-              <Sparkles className="w-3 h-3 text-blue-600" />
-              <span>Import Project</span>
+              <Sparkles className="w-3 h-3 text-blue-400" />
+              <span>Import</span>
             </button>
           </div>
         </div>
@@ -349,6 +400,8 @@ export default function App() {
           <div>
             <h1 className="text-xl font-bold tracking-tight text-neutral-900">
               {activeTab === 'overview' && 'Projects & Spend Dashboard'}
+              {activeTab === 'trends' && '30-Day Trends & Token Growth (Recharts)'}
+              {activeTab === 'anomalies' && 'Real-Time Anomaly Detection System'}
               {activeTab === 'tool-burn' && 'Tool Budget Burn Diagnostics'}
               {activeTab === 'end-to-end' && 'End-to-End Pipeline & Simulator'}
               {activeTab === 'audit-logs' && 'Request Traces & Audit Ledger'}
@@ -392,10 +445,38 @@ export default function App() {
 
         {/* Active Tab Views */}
         {activeTab === 'overview' && (
-          <ProjectsTable
+          <div className="space-y-6">
+            {/* If critical anomalies exist, show anomaly panel on overview */}
+            {anomalies.some(a => a.severity === 'critical' && !a.isResolved) && (
+              <AnomalyDetectionPanel
+                anomalies={anomalies.filter(a => !a.isResolved)}
+                projects={projects}
+                onSelectProject={(id) => setSelectedProjectId(id)}
+                onResolveAnomaly={handleResolveAnomaly}
+              />
+            )}
+
+            <ProjectsTable
+              projects={projects}
+              onSelectProject={(id) => setSelectedProjectId(id)}
+              onOpenEditBudget={(proj) => setSelectedProjectId(proj.id)}
+            />
+          </div>
+        )}
+
+        {activeTab === 'trends' && (
+          <TrendsDashboard
             projects={projects}
             onSelectProject={(id) => setSelectedProjectId(id)}
-            onOpenEditBudget={(proj) => setSelectedProjectId(proj.id)}
+          />
+        )}
+
+        {activeTab === 'anomalies' && (
+          <AnomalyDetectionPanel
+            anomalies={anomalies}
+            projects={projects}
+            onSelectProject={(id) => setSelectedProjectId(id)}
+            onResolveAnomaly={handleResolveAnomaly}
           />
         )}
 
@@ -431,8 +512,8 @@ export default function App() {
           </div>
           <div className="flex items-center gap-4 text-[11px] font-mono text-neutral-400">
             <span>Gemini API v1beta / v1alpha</span>
-            <span>Multimodal Live WebSocket</span>
-            <span>Active: ais-asia-southeast1-c2963b3f6b</span>
+            <span>Recharts Analytics</span>
+            <span>Anomaly Detector Active</span>
           </div>
         </div>
       </footer>

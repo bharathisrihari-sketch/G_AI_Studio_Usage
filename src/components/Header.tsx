@@ -1,15 +1,17 @@
 import React from 'react';
-import { Plus, Download, Radio, ShieldCheck, RefreshCw } from 'lucide-react';
+import { Plus, Download, Radio, ShieldCheck, RefreshCw, Activity, TrendingUp } from 'lucide-react';
+
+export type TabType = 'overview' | 'trends' | 'anomalies' | 'tool-burn' | 'end-to-end' | 'audit-logs';
 
 interface HeaderProps {
-  activeTab: 'overview' | 'tool-burn' | 'end-to-end' | 'audit-logs';
-  setActiveTab: (tab: 'overview' | 'tool-burn' | 'end-to-end' | 'audit-logs') => void;
+  activeTab: TabType;
+  setActiveTab: (tab: TabType) => void;
   userEmail: string;
   isSimulating: boolean;
   setIsSimulating: (val: boolean) => void;
   onOpenAddProject: () => void;
   onExportReport: () => void;
-  onResetData?: () => void;
+  activeAnomaliesCount?: number;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -19,7 +21,8 @@ export const Header: React.FC<HeaderProps> = ({
   isSimulating,
   setIsSimulating,
   onOpenAddProject,
-  onExportReport
+  onExportReport,
+  activeAnomaliesCount = 3
 }) => {
   return (
     <header className="sticky top-0 z-40 bg-white border-b border-neutral-200">
@@ -42,8 +45,8 @@ export const Header: React.FC<HeaderProps> = ({
           </span>
         </div>
 
-        {/* Zone 2: 4 Clean single-line text navigation links */}
-        <nav className="hidden lg:flex items-center gap-6 text-sm font-medium">
+        {/* Zone 2: Clean single-line text navigation links */}
+        <nav className="hidden lg:flex items-center gap-5 xl:gap-6 text-sm font-medium">
           <button
             onClick={() => setActiveTab('overview')}
             className={`transition-colors pb-1 border-b-2 text-xs uppercase tracking-wider ${
@@ -54,6 +57,38 @@ export const Header: React.FC<HeaderProps> = ({
           >
             Projects & Spend
           </button>
+          
+          {/* New Trends Tab */}
+          <button
+            onClick={() => setActiveTab('trends')}
+            className={`transition-colors pb-1 border-b-2 text-xs uppercase tracking-wider flex items-center gap-1.5 ${
+              activeTab === 'trends'
+                ? 'border-neutral-900 text-neutral-900 font-semibold'
+                : 'border-transparent text-neutral-500 hover:text-neutral-900'
+            }`}
+          >
+            <TrendingUp className="w-3.5 h-3.5 text-blue-600" />
+            <span>30D Trends</span>
+          </button>
+
+          {/* New Anomalies Tab */}
+          <button
+            onClick={() => setActiveTab('anomalies')}
+            className={`transition-colors pb-1 border-b-2 text-xs uppercase tracking-wider flex items-center gap-1.5 ${
+              activeTab === 'anomalies'
+                ? 'border-neutral-900 text-neutral-900 font-semibold'
+                : 'border-transparent text-neutral-500 hover:text-neutral-900'
+            }`}
+          >
+            <Activity className="w-3.5 h-3.5 text-rose-600" />
+            <span>Anomalies</span>
+            {activeAnomaliesCount > 0 && (
+              <span className="font-mono text-[10px] font-bold text-rose-700 bg-rose-50 px-1.5 py-0.2 rounded-full border border-rose-200">
+                {activeAnomaliesCount}
+              </span>
+            )}
+          </button>
+
           <button
             onClick={() => setActiveTab('tool-burn')}
             className={`transition-colors pb-1 border-b-2 text-xs uppercase tracking-wider flex items-center gap-1.5 ${
@@ -62,9 +97,10 @@ export const Header: React.FC<HeaderProps> = ({
                 : 'border-transparent text-neutral-500 hover:text-neutral-900'
             }`}
           >
-            <span>Tool Budget Burn</span>
+            <span>Tool Burn</span>
             <span className="w-1.5 h-1.5 rounded-full bg-amber-500" title="High burn detected"></span>
           </button>
+
           <button
             onClick={() => setActiveTab('end-to-end')}
             className={`transition-colors pb-1 border-b-2 text-xs uppercase tracking-wider ${
@@ -73,8 +109,9 @@ export const Header: React.FC<HeaderProps> = ({
                 : 'border-transparent text-neutral-500 hover:text-neutral-900'
             }`}
           >
-            End-to-End Pipeline & Simulator
+            End-to-End
           </button>
+
           <button
             onClick={() => setActiveTab('audit-logs')}
             className={`transition-colors pb-1 border-b-2 text-xs uppercase tracking-wider ${
@@ -83,7 +120,7 @@ export const Header: React.FC<HeaderProps> = ({
                 : 'border-transparent text-neutral-500 hover:text-neutral-900'
             }`}
           >
-            Traces & Audit Logs
+            Audit Logs
           </button>
         </nav>
 
@@ -98,10 +135,10 @@ export const Header: React.FC<HeaderProps> = ({
                 ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
                 : 'bg-neutral-50 text-neutral-600 border-neutral-200 hover:bg-neutral-100'
             }`}
-            title="Simulate live API request traffic and dynamic token updates"
+            title="Simulate live API request traffic and anomaly detection"
           >
             <Radio className={`w-3.5 h-3.5 ${isSimulating ? 'text-emerald-600 animate-pulse' : 'text-neutral-400'}`} />
-            <span className="hidden sm:inline">{isSimulating ? 'Live Feed: On' : 'Live Feed: Paused'}</span>
+            <span className="hidden sm:inline">{isSimulating ? 'Feed: On' : 'Feed: Paused'}</span>
           </button>
 
           {/* Export Report */}
@@ -146,22 +183,34 @@ export const Header: React.FC<HeaderProps> = ({
           Projects & Spend
         </button>
         <button
+          onClick={() => setActiveTab('trends')}
+          className={`px-2.5 py-1 rounded whitespace-nowrap font-medium ${activeTab === 'trends' ? 'bg-neutral-900 text-white' : 'text-neutral-600'}`}
+        >
+          30D Trends
+        </button>
+        <button
+          onClick={() => setActiveTab('anomalies')}
+          className={`px-2.5 py-1 rounded whitespace-nowrap font-medium ${activeTab === 'anomalies' ? 'bg-neutral-900 text-white' : 'text-neutral-600'}`}
+        >
+          Anomalies ({activeAnomaliesCount})
+        </button>
+        <button
           onClick={() => setActiveTab('tool-burn')}
           className={`px-2.5 py-1 rounded whitespace-nowrap font-medium ${activeTab === 'tool-burn' ? 'bg-neutral-900 text-white' : 'text-neutral-600'}`}
         >
-          Tool Budget Burn
+          Tool Burn
         </button>
         <button
           onClick={() => setActiveTab('end-to-end')}
           className={`px-2.5 py-1 rounded whitespace-nowrap font-medium ${activeTab === 'end-to-end' ? 'bg-neutral-900 text-white' : 'text-neutral-600'}`}
         >
-          End-to-End Tracer
+          End-to-End
         </button>
         <button
           onClick={() => setActiveTab('audit-logs')}
           className={`px-2.5 py-1 rounded whitespace-nowrap font-medium ${activeTab === 'audit-logs' ? 'bg-neutral-900 text-white' : 'text-neutral-600'}`}
         >
-          Audit Traces
+          Audit Logs
         </button>
       </div>
     </header>

@@ -2,5 +2,7 @@
   "name": "Google AI Studio Project & FinOps Tracker",
   "description": "End-to-end usage, spend, tool budget burn analysis, and quota tracking for all projects under your Google AI Studio account.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

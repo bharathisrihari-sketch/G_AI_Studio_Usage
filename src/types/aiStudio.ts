@@ -82,6 +82,13 @@ export interface AIStudioProject {
   id: string;
   name: string;
   gcpProjectId: string;
+  liveUrl: string;
+  lastUsedStatus: string;
+  lastUsedTimestamp: string;
+  lastDeployedStatus: string;
+  lastDeployedTimestamp: string;
+  deploymentVersion: string;
+  deploymentHealth: 'healthy' | 'warning' | 'degraded';
   environment: Environment;
   status: ProjectStatus;
   createdDate: string;
@@ -110,6 +117,39 @@ export interface AIStudioProject {
   alertThresholdPercent: number; // e.g. 80
   autoPauseOnBudgetBreach: boolean;
   notes: string;
+}
+
+export type AnomalyType = 'spend_spike' | 'error_rate_surge' | 'tool_runaway' | 'token_surge';
+
+export interface AnomalyEvent {
+  id: string;
+  projectId: string;
+  projectName: string;
+  type: AnomalyType;
+  severity: 'critical' | 'high' | 'moderate';
+  detectedAt: string;
+  headline: string;
+  description: string;
+  metricCurrent: string;
+  metricBaseline: string;
+  deviationPercent: number; // e.g. 340 for +340%
+  suggestedAction: string;
+  isResolved: boolean;
+}
+
+export interface DailyTrendPoint {
+  date: string; // e.g. "09/08"
+  fullDate: string; // "2026-09-08"
+  totalSpend: number;
+  cumulativeSpend: number;
+  promptTokens: number;
+  outputTokens: number;
+  cachedTokens: number;
+  totalTokens: number;
+  requestsCount: number;
+  errorCount: number;
+  // Per-project spend breakdown
+  [key: string]: any;
 }
 
 export interface FinOpsSummary {

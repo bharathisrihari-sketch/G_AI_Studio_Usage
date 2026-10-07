@@ -1,5 +1,16 @@
 import React, { useState } from 'react';
-import { Search, Filter, ChevronRight, Sliders, ExternalLink, ShieldCheck, AlertTriangle, ShieldAlert, PauseCircle } from 'lucide-react';
+import { 
+  Search, 
+  ChevronRight, 
+  Sliders, 
+  ExternalLink, 
+  CheckCircle2, 
+  Clock, 
+  Server, 
+  GitCommit, 
+  PauseCircle,
+  Activity
+} from 'lucide-react';
 import { AIStudioProject, Environment, ProjectStatus } from '../types/aiStudio';
 import { formatCurrency, formatCompactNumber } from '../utils/pricingCalculator';
 
@@ -21,7 +32,8 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
   const filteredProjects = projects.filter(p => {
     const matchesSearch = 
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.gcpProjectId.toLowerCase().includes(searchQuery.toLowerCase());
+      p.gcpProjectId.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (p.liveUrl && p.liveUrl.toLowerCase().includes(searchQuery.toLowerCase()));
     
     const matchesEnv = selectedEnv === 'all' || p.environment === selectedEnv;
     const matchesStatus = selectedStatus === 'all' || p.status === selectedStatus;
@@ -38,7 +50,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
             Google AI Studio Projects Directory
           </h2>
           <p className="text-xs text-neutral-500 mt-0.5">
-            Active projects, monthly spend trajectory, quota headroom, and top budget-burning tools.
+            Active workspaces, live endpoints, deployment revisions, and spend trajectories under your account.
           </p>
         </div>
 
@@ -49,7 +61,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
             <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400" />
             <input
               type="text"
-              placeholder="Search project or GCP ID..."
+              placeholder="Search name, GCP ID, or URL..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-8 pr-3 py-1.5 text-xs border border-neutral-200 rounded bg-neutral-50 focus:bg-white focus:outline-none focus:border-neutral-900 w-48 sm:w-60"
@@ -93,13 +105,13 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
         <table className="w-full text-left text-xs">
           <thead className="bg-neutral-50 border-b border-neutral-200 text-neutral-600 font-semibold uppercase tracking-wider text-[11px]">
             <tr>
-              <th className="py-3 px-4">Project & Environment</th>
-              <th className="py-3 px-4">Status</th>
+              <th className="py-3 px-4">Project Name & Live URL</th>
+              <th className="py-3 px-4">Last Used Status</th>
+              <th className="py-3 px-4">Last Deployed Status</th>
               <th className="py-3 px-4">Spend MTD / Budget</th>
               <th className="py-3 px-4">Daily Burn & EOM</th>
               <th className="py-3 px-4">Usage & Tokens</th>
               <th className="py-3 px-4">Quota Peak</th>
-              <th className="py-3 px-4">Top Budget Burning Tools</th>
               <th className="py-3 px-4 text-right">End-to-End View</th>
             </tr>
           </thead>
@@ -122,11 +134,36 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                     onClick={() => onSelectProject(p.id)}
                     className="hover:bg-neutral-50/80 transition-colors cursor-pointer group"
                   >
-                    {/* Project & Environment */}
-                    <td className="py-3.5 px-4">
-                      <div className="font-semibold text-neutral-900 group-hover:text-blue-600 transition-colors">
-                        {p.name}
+                    {/* Project Name & Live URL */}
+                    <td className="py-3.5 px-4 min-w-[260px]">
+                      <div className="font-bold text-neutral-900 group-hover:text-blue-600 transition-colors flex items-center gap-1.5">
+                        <span>{p.name}</span>
+                        {p.status === 'healthy' && (
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" title="Operational"></span>
+                        )}
+                        {p.status === 'warning' && (
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" title="Budget Warning"></span>
+                        )}
+                        {p.status === 'throttled' && (
+                          <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse shrink-0" title="Throttled"></span>
+                        )}
                       </div>
+
+                      {/* Live URL with clickable link */}
+                      <div className="mt-1 flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                        <a
+                          href={p.liveUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="font-mono text-[11px] text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1 truncate max-w-[240px]"
+                          title={`Open Live URL: ${p.liveUrl}`}
+                        >
+                          <span className="truncate">{p.liveUrl.replace('https://', '')}</span>
+                          <ExternalLink className="w-3 h-3 shrink-0" />
+                        </a>
+                      </div>
+
+                      {/* GCP ID & Environment */}
                       <div className="font-mono text-[11px] text-neutral-500 flex items-center gap-1.5 mt-0.5">
                         <span>{p.gcpProjectId}</span>
                         <span aria-hidden="true">·</span>
@@ -136,42 +173,41 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                       </div>
                     </td>
 
-                    {/* Status */}
-                    <td className="py-3.5 px-4 whitespace-nowrap">
-                      {p.status === 'healthy' && (
-                        <span className="inline-flex items-center gap-1.5 text-emerald-700 font-medium">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                          Healthy
+                    {/* Last Used Status */}
+                    <td className="py-3.5 px-4 whitespace-nowrap min-w-[140px]">
+                      <div className="flex items-center gap-1.5 font-medium text-neutral-900">
+                        <Activity className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        <span>{p.lastUsedStatus || 'Active (Just now)'}</span>
+                      </div>
+                      <div className="text-[11px] font-mono text-neutral-500 mt-0.5">
+                        {p.lastUsedTimestamp || 'Recent traffic'}
+                      </div>
+                    </td>
+
+                    {/* Last Deployed Status */}
+                    <td className="py-3.5 px-4 whitespace-nowrap min-w-[200px]">
+                      <div className="flex items-center gap-1.5">
+                        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                          p.deploymentHealth === 'warning' ? 'bg-amber-500' : 'bg-emerald-500'
+                        }`} />
+                        <span className="font-semibold text-neutral-800">
+                          {p.lastDeployedStatus || 'Deployed (Healthy)'}
                         </span>
-                      )}
-                      {p.status === 'warning' && (
-                        <span className="inline-flex items-center gap-1.5 text-amber-700 font-medium">
-                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-                          {percentSpent}% Budget
-                        </span>
-                      )}
-                      {p.status === 'throttled' && (
-                        <span className="inline-flex items-center gap-1.5 text-rose-700 font-medium">
-                          <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span>
-                          429 Throttled
-                        </span>
-                      )}
-                      {p.status === 'paused' && (
-                        <span className="inline-flex items-center gap-1.5 text-neutral-500 font-medium">
-                          <PauseCircle className="w-3.5 h-3.5 text-neutral-400" />
-                          Paused
-                        </span>
-                      )}
+                      </div>
+                      <div className="text-[11px] font-mono text-neutral-500 mt-0.5 flex items-center gap-1">
+                        <GitCommit className="w-3 h-3 text-neutral-400" />
+                        <span>{p.deploymentVersion || 'v2.8.0'}</span>
+                      </div>
                     </td>
 
                     {/* Spend MTD / Budget */}
-                    <td className="py-3.5 px-4">
+                    <td className="py-3.5 px-4 whitespace-nowrap">
                       <div className="flex items-center justify-between text-xs font-mono tabular-nums mb-1">
                         <span className="font-bold text-neutral-900">{formatCurrency(p.spendMTD)}</span>
                         <span className="text-neutral-500">/ {formatCurrency(p.monthlyBudget)}</span>
                       </div>
                       {/* Budget progress bar */}
-                      <div className="w-32 bg-neutral-100 rounded-full h-1.5 overflow-hidden">
+                      <div className="w-28 bg-neutral-100 rounded-full h-1.5 overflow-hidden">
                         <div 
                           className={`h-full rounded-full ${
                             percentSpent > 85 ? 'bg-rose-500' : percentSpent > 70 ? 'bg-amber-500' : 'bg-emerald-500'
@@ -182,24 +218,24 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                     </td>
 
                     {/* Daily Burn & EOM */}
-                    <td className="py-3.5 px-4 whitespace-nowrap">
-                      <div className="font-mono tabular-nums font-semibold text-neutral-900">
+                    <td className="py-3.5 px-4 whitespace-nowrap font-mono tabular-nums">
+                      <div className="font-semibold text-neutral-900">
                         {formatCurrency(p.dailyBurnRate)}/day
                       </div>
-                      <div className="text-[11px] text-neutral-500 font-mono tabular-nums">
+                      <div className="text-[11px] text-neutral-500">
                         Proj: {formatCurrency(p.projectedSpend)}
                       </div>
                     </td>
 
                     {/* Usage & Tokens */}
-                    <td className="py-3.5 px-4 whitespace-nowrap">
-                      <div className="font-mono tabular-nums text-neutral-900">
+                    <td className="py-3.5 px-4 whitespace-nowrap font-mono tabular-nums">
+                      <div className="text-neutral-900">
                         {formatCompactNumber(p.totalRequests)} calls
                       </div>
-                      <div className="text-[11px] text-neutral-500 font-mono tabular-nums">
+                      <div className="text-[11px] text-neutral-500">
                         {formatCompactNumber(p.promptTokens + p.outputTokens)} tok
                         {p.cacheSavingsUSD > 0 && (
-                          <span className="text-emerald-700 ml-1 font-medium">
+                          <span className="text-emerald-700 ml-1 font-semibold">
                             (-{formatCurrency(p.cacheSavingsUSD)})
                           </span>
                         )}
@@ -215,29 +251,6 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                       <div className="text-[11px] text-neutral-500">
                         TPM: <span className={tpmPercent > 80 ? 'text-rose-600 font-bold' : ''}>{formatCompactNumber(p.peakTpm)}</span>
                         <span className="text-neutral-400">/{formatCompactNumber(p.quotaTpm)}</span>
-                      </div>
-                    </td>
-
-                    {/* Top Budget Burning Tools */}
-                    <td className="py-3.5 px-4">
-                      <div className="space-y-1 max-w-[200px]">
-                        {p.topToolsBurn.slice(0, 2).map((tb, idx) => (
-                          <div key={idx} className="flex items-center justify-between text-[11px]">
-                            <span className="truncate text-neutral-600 font-medium mr-1.5" title={tb.tool.replace(/_/g, ' ')}>
-                              {tb.tool === 'google_search_grounding' && 'Search Grounding'}
-                              {tb.tool === 'function_calling_loop' && 'Agent Tool Loop'}
-                              {tb.tool === 'code_execution' && 'Python Sandbox'}
-                              {tb.tool === 'multimodal_video_ingest' && 'Video Frame Ingest'}
-                              {tb.tool === 'uncached_context_expansion' && 'Uncached Context'}
-                              {tb.tool === 'live_audio_bidirectional' && 'Live Audio Stream'}
-                              {tb.tool === 'imagen_generation' && 'Imagen 3'}
-                              {tb.tool === 'multimodal_image_ingest' && 'Image Ingest'}
-                            </span>
-                            <span className="font-mono tabular-nums font-semibold text-neutral-800 shrink-0">
-                              {formatCurrency(tb.spend)}
-                            </span>
-                          </div>
-                        ))}
                       </div>
                     </td>
 
